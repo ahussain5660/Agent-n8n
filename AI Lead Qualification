@@ -1,0 +1,140 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -400,
+        -160
+      ],
+      "id": "1dc22fe3-b2d8-420e-973d-8be7f1475985",
+      "name": "When chat message received",
+      "webhookId": "faee45c5-db75-406a-8051-6b81467b030b"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "You are an AI Lead Qualification Agent.\n\nYour job is to analyze the lead information provided by the user and determine how valuable the lead is.\n\nFor every lead, return:\n\n- Company Name\n- Industry\n- Lead Score: 0-100\n- Lead Status: HOT, WARM, or COLD\n- Reason\n\nScoring:\n80-100 = HOT\n50-79 = WARM\n0-49 = COLD\n\nConsider industry relevance, company size, business need, website/activity, and potential to become a customer.\n\nNever invent information.\nIf information is missing, write \"Not provided\".\n\nKeep the response professional, simple, and concise.\nReturn the final answer in this exact format:\n\nCompany Name:\nIndustry:\nLead Score:\nLead Status:\nReason:"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -64,
+        -176
+      ],
+      "id": "988e39af-3dc6-4ff7-a1b9-59e5f18a205d",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -208,
+        0
+      ],
+      "id": "29ab3c97-2365-4e56-9199-5864467cdd69",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "CHXUhjsMI6A3oLHY",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "29c223e2-f44b-4089-94ff-f01b08146f75",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $json.output || \"\";\n\nconst blocks = text\n  .split(/\\n\\s*\\n/)\n  .map(block => block.trim())\n  .filter(Boolean);\n\nconst leads = blocks.map(block => {\n  const getValue = (label) => {\n    const regex = new RegExp(`${label}:\\\\s*(.*)`, \"i\");\n    const match = block.match(regex);\n    return match ? match[1].trim() : \"Not provided\";\n  };\n\n  return {\n    json: {\n      company_name: getValue(\"Company Name\"),\n      industry: getValue(\"Industry\"),\n      lead_score: Number(getValue(\"Lead Score\")) || 0,\n      lead_status: getValue(\"Lead Status\"),\n      reason: getValue(\"Reason\")\n    }\n  };\n});\n\nreturn leads;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        96
+      ],
+      "id": "e6c69536-e87d-48be-82f8-c6e9dab1f198",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        80,
+        96
+      ],
+      "typeVersion": 1,
+      "id": "f85c3501-eb0b-4df7-80d8-377feb229e1d",
+      "name": "Sticky Note"
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c96319584dd02b59021ef6e02730f59c488ee9731daa40dfa8c1d2c1afaaf35c"
+  }
+}
